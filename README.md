@@ -1,123 +1,509 @@
-# RescueRoute — Complete Emergency Dispatch & Route Optimization System
+# RescueRoute
 
-RescueRoute is a complete placement-oriented Java project for prioritizing emergencies, selecting an eligible response vehicle, calculating a shortest route, dispatching the unit safely, and tracking the operational state.
+### Intelligent Emergency Dispatch and Route Optimization System
 
-## Project structure
+[![Java](https://img.shields.io/badge/Java-17-orange)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue)](https://www.postgresql.org/)
+[![Maven](https://img.shields.io/badge/Maven-3.x-red)](https://maven.apache.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+RescueRoute is a Java-based emergency dispatch and route optimization system designed to assist emergency operations teams in prioritizing incidents, selecting suitable response vehicles, calculating efficient routes, and managing dispatch operations through a centralized dashboard.
+
+The system combines priority-based incident management, vehicle eligibility, shortest-path routing, vehicle state management, transactional dispatching, and PostgreSQL persistence.
+
+---
+
+## Overview
+
+Emergency response operations often involve multiple incidents competing for a limited number of response vehicles. A dispatch system needs to determine which incident should be handled first, which vehicle is appropriate, and how that vehicle can reach the incident efficiently.
+
+RescueRoute addresses these requirements through a structured dispatch workflow:
 
 ```text
-RescueRoutePackage/
-├── backend/
-│   ├── pom.xml
-│   └── src/
-│       ├── main/java/com/rescueroute/
-│       │   ├── algorithm/       # Graph + Dijkstra
-│       │   ├── config/          # Seed data + CORS
-│       │   ├── controller/      # REST API
-│       │   ├── dto/             # Request/response models
-│       │   ├── entity/          # JPA entities
-│       │   ├── enums/           # Domain states/types
-│       │   ├── exception/       # API error handling
-│       │   ├── repository/      # PostgreSQL/JPA access
-│       │   └── service/         # Business logic
-│       └── test/                # JUnit tests
-└── frontend/
-    ├── index.html
-    ├── styles.css
-    └── app.js
+Emergency
+    ↓
+Priority
+    ↓
+Vehicle Eligibility
+    ↓
+Vehicle Selection
+    ↓
+Shortest Route
+    ↓
+Dispatch
+    ↓
+Vehicle State Update
+    ↓
+Completion
 ```
 
-## Technology stack
+---
 
-- Java 17
-- Spring Boot 3.4.10
-- Spring Web
-- Spring Data JPA / Hibernate
-- PostgreSQL
-- Maven
-- JUnit 5 + Spring Boot Test
-- HTML5 / CSS3 / Vanilla JavaScript
-- Leaflet + OpenStreetMap
+## Features
 
-## Main features
+### Emergency Incident Management
 
-- Emergency incident creation and status management
-- Severity-based priority ordering
-- Java `PriorityQueue` for deterministic emergency ordering
-- Vehicle eligibility filtering
-- Nearest eligible vehicle selection
-- Workload tie-breaker
-- Explicit weighted graph
-- Manual Dijkstra shortest-path implementation
-- ETA calculation from configured average speed
-- Vehicle state lifecycle
-- PostgreSQL persistence
-- Transactional dispatch
-- Pessimistic locking for vehicle assignment
-- Pessimistic locking for the incident during dispatch
-- Premium SaaS-style operations dashboard
-- Incidents and fleet screens
-- Leaflet live map visualization
-- Local/demo operator login and logout UI
-- Responsive layout and animations
+* Create and manage emergency incidents
+* Classify incidents by type and severity
+* Track incident status
+* Prioritize competing emergencies
+* Store incident location and creation time
 
-## Important honesty points
+### Vehicle Management
 
-The login in this version is a **frontend demo login**. It is not production authentication and does not secure the REST API.
+* Maintain emergency vehicle information
+* Track vehicle availability
+* Validate vehicle suitability
+* Track vehicle operational states
+* Maintain current vehicle assignments
 
-The dashboard is action-driven REST based. It is **not WebSocket server-push real-time** yet. WebSockets can be added later as a separate learning module.
+### Intelligent Dispatch
 
-The map route network is a simplified demonstration graph. It is not a live Google/Mapbox routing service and does not use live traffic.
+* Filters unavailable vehicles
+* Validates vehicle suitability for the incident
+* Selects the nearest eligible vehicle
+* Uses workload as a tie-breaker
+* Prevents conflicting vehicle assignments through transactional processing
 
-No AI/ML is claimed in this Java project.
+### Route Optimization
 
-## Database
+* Implements Dijkstra's shortest-path algorithm
+* Uses a weighted graph for route calculation
+* Calculates route distance
+* Calculates estimated response time
 
-Create the PostgreSQL database:
+### Operations Dashboard
+
+The web interface provides:
+
+* Incident overview
+* Critical incident count
+* Pending incident count
+* Available vehicle count
+* Incident management
+* Vehicle management
+* Dispatch operations
+* Map-based visualization
+
+### Map Visualization
+
+Leaflet and OpenStreetMap are used to display:
+
+* Emergency locations
+* Vehicle locations
+* Calculated routes
+
+---
+
+## System Architecture
+
+```text
+                    Frontend
+              HTML / CSS / JavaScript
+                       |
+                       | REST API
+                       |
+                       v
+                 Spring Boot
+                   Backend
+                       |
+          +------------+------------+
+          |            |            |
+          v            v            v
+    Controllers     Services    Algorithms
+                                    |
+                           +--------+--------+
+                           |                 |
+                           v                 v
+                       Priority          Dijkstra
+                       Queue             Algorithm
+          |
+          v
+   Spring Data JPA
+          |
+          v
+      PostgreSQL
+```
+
+The backend follows a layered architecture:
+
+```text
+Controller
+    ↓
+Service
+    ↓
+Repository
+    ↓
+PostgreSQL
+```
+
+This separation keeps API handling, business logic, persistence, and algorithmic processing independent and maintainable.
+
+---
+
+## Core Algorithms
+
+### Priority Queue
+
+Java's `PriorityQueue` is used to manage competing emergency incidents.
+
+Incidents are ordered using:
+
+1. Severity
+2. Creation time when severity is equal
+
+Priority order:
+
+```text
+CRITICAL
+    ↓
+HIGH
+    ↓
+MEDIUM
+    ↓
+LOW
+```
+
+For incidents with the same severity, the older incident is processed first.
+
+This allows the system to retrieve the highest-priority emergency efficiently.
+
+---
+
+### Vehicle Selection
+
+Vehicle selection follows a feasibility-first approach:
+
+```text
+1. Vehicle must be AVAILABLE
+2. Vehicle must support the incident type
+3. Select the vehicle with the shortest distance
+4. Use workload as a tie-breaker
+```
+
+This prevents the system from selecting a vehicle that is closer but unsuitable for the emergency.
+
+---
+
+### Dijkstra's Algorithm
+
+RescueRoute implements Dijkstra's shortest-path algorithm over a weighted graph.
+
+The graph contains:
+
+```text
+Nodes  → Locations
+Edges  → Connections
+Weights → Distance
+```
+
+The algorithm calculates the shortest path from the selected vehicle to the emergency location.
+
+The resulting distance is then used to calculate an estimated response time.
+
+---
+
+## Vehicle State Management
+
+Vehicles follow a controlled lifecycle:
+
+```text
+AVAILABLE
+    ↓
+DISPATCHED
+    ↓
+EN_ROUTE
+    ↓
+ON_SCENE
+    ↓
+COMPLETED
+    ↓
+AVAILABLE
+```
+
+`OFFLINE` vehicles cannot be selected for dispatch.
+
+The application prevents invalid vehicle state transitions.
+
+---
+
+## Dispatch Workflow
+
+```text
+Incident Created
+       ↓
+Incident Prioritized
+       ↓
+Find Eligible Vehicles
+       ↓
+Select Nearest Suitable Vehicle
+       ↓
+Re-check Vehicle Availability
+       ↓
+Calculate Dijkstra Route
+       ↓
+Calculate ETA
+       ↓
+Create Assignment
+       ↓
+Update Incident
+       ↓
+Update Vehicle
+       ↓
+Dispatch Completed
+```
+
+---
+
+## Concurrency Handling
+
+Vehicle assignment is a concurrency-sensitive operation.
+
+For example, two operators may attempt to dispatch the same vehicle at nearly the same time.
+
+RescueRoute handles this through transactional processing and database-level locking/re-validation.
+
+The system re-checks vehicle availability before completing the assignment, reducing the risk of duplicate vehicle allocation.
+
+---
+
+## Database Design
+
+### Incidents
+
+| Field       | Description                |
+| ----------- | -------------------------- |
+| ID          | Unique incident identifier |
+| Type        | Emergency category         |
+| Severity    | Emergency priority         |
+| Description | Incident details           |
+| Latitude    | Incident latitude          |
+| Longitude   | Incident longitude         |
+| Status      | Current incident state     |
+| Created At  | Incident creation time     |
+
+### Vehicles
+
+| Field            | Description               |
+| ---------------- | ------------------------- |
+| ID               | Unique vehicle identifier |
+| Vehicle Number   | Fleet identifier          |
+| Type             | Vehicle category          |
+| Latitude         | Current latitude          |
+| Longitude        | Current longitude         |
+| Status           | Current vehicle state     |
+| Current Incident | Active assignment         |
+| Workload         | Current workload          |
+
+### Assignments
+
+| Field          | Description               |
+| -------------- | ------------------------- |
+| ID             | Assignment identifier     |
+| Incident ID    | Assigned incident         |
+| Vehicle ID     | Assigned vehicle          |
+| Distance       | Calculated route distance |
+| Estimated Time | Estimated response time   |
+| Assigned At    | Assignment timestamp      |
+| Completed At   | Completion timestamp      |
+| Status         | Assignment state          |
+
+---
+
+## Technology Stack
+
+### Backend
+
+* Java 17
+* Spring Boot
+* Spring Data JPA
+* Hibernate
+* Maven
+
+### Database
+
+* PostgreSQL 18
+
+### Frontend
+
+* HTML5
+* CSS3
+* JavaScript
+* Leaflet
+* OpenStreetMap
+
+### Testing
+
+* JUnit 5
+* Mockito
+* Spring Boot Test
+
+### Development
+
+* Git
+* GitHub
+* IntelliJ IDEA / VS Code
+* PostgreSQL
+
+---
+
+## Project Structure
+
+```text
+RescueRoute/
+│
+├── backend/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/rescueroute/
+│   │   │   │   ├── algorithm/
+│   │   │   │   ├── config/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── dto/
+│   │   │   │   ├── entity/
+│   │   │   │   ├── enums/
+│   │   │   │   ├── exception/
+│   │   │   │   ├── repository/
+│   │   │   │   └── service/
+│   │   │   │
+│   │   │   └── resources/
+│   │   │       └── application.properties
+│   │   │
+│   │   └── test/
+│   │
+│   └── pom.xml
+│
+├── frontend/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── README.txt
+│
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+---
+
+## REST API
+
+### Incidents
+
+| Method | Endpoint                        | Description               |
+| ------ | ------------------------------- | ------------------------- |
+| POST   | `/api/incidents`                | Create an incident        |
+| GET    | `/api/incidents`                | Get all incidents         |
+| GET    | `/api/incidents/{id}`           | Get an incident           |
+| PUT    | `/api/incidents/{id}/status`    | Update incident status    |
+| GET    | `/api/incidents/priority-queue` | Get prioritized incidents |
+
+### Vehicles
+
+| Method | Endpoint                    | Description            |
+| ------ | --------------------------- | ---------------------- |
+| GET    | `/api/vehicles`             | Get all vehicles       |
+| GET    | `/api/vehicles/available`   | Get available vehicles |
+| GET    | `/api/vehicles/{id}`        | Get a vehicle          |
+| PUT    | `/api/vehicles/{id}/status` | Update vehicle status  |
+
+### Dispatch
+
+| Method | Endpoint               | Description               |
+| ------ | ---------------------- | ------------------------- |
+| POST   | `/api/dispatch`        | Dispatch a vehicle        |
+| GET    | `/api/dispatches`      | Get dispatch assignments  |
+| GET    | `/api/dispatches/{id}` | Get a dispatch assignment |
+
+### Routes
+
+| Method | Endpoint                | Description              |
+| ------ | ----------------------- | ------------------------ |
+| POST   | `/api/routes/calculate` | Calculate shortest route |
+
+### Dashboard
+
+| Method | Endpoint                 | Description              |
+| ------ | ------------------------ | ------------------------ |
+| GET    | `/api/dashboard/summary` | Get dashboard statistics |
+
+---
+
+## Testing
+
+The project includes automated tests for core application logic.
+
+Current tests cover:
+
+* Dijkstra shortest-path calculation
+* Emergency priority ordering
+* Service-level decision logic
+
+Run the tests with:
+
+```bash
+mvn clean test
+```
+
+---
+
+## Configuration
+
+Database credentials are externalized using environment variables.
+
+```properties
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+```
+
+Production credentials should be provided through the deployment platform's environment-variable configuration rather than committed to source control.
+
+---
+
+## Local Setup
+
+### Prerequisites
+
+* Java 17 or later
+* Maven
+* PostgreSQL
+* Git
+
+### Database
+
+Create a PostgreSQL database:
 
 ```sql
 CREATE DATABASE rescueroute;
 ```
 
-Default configuration:
+Configure the required database environment variables:
 
 ```text
-DB_URL=jdbc:postgresql://localhost:5432/rescueroute
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
+DB_URL
+DB_USERNAME
+DB_PASSWORD
 ```
 
-If your PostgreSQL password is different, set `DB_PASSWORD` before starting Spring Boot. You can also set `DB_URL` and `DB_USERNAME`.
+### Run Backend
 
-Hibernate uses `ddl-auto=update`, so the tables are created/updated from the JPA entities. Sample vehicles and incidents are inserted on the first empty database startup.
-
-## Run the complete project on Windows
-
-### 1. Backend
-
-Open Command Prompt:
-
-```bat
-cd "C:\ShreyaResumeProjects\JAVA\RescueRoute\RescueRoutePackage\backend"
-mvn clean test
+```bash
+cd backend
 mvn spring-boot:run
 ```
 
-Wait for:
+The backend runs on:
 
 ```text
-Started RescueRouteApplication
+http://localhost:8080
 ```
 
-The backend runs on port `8080`.
+### Run Frontend
 
-If `mvn clean test` succeeds, the JUnit tests have passed before you start the application.
-
-### 2. Frontend
-
-Open a second Command Prompt:
-
-```bat
-cd "C:\ShreyaResumeProjects\JAVA\RescueRoute\RescueRoutePackage\frontend"
+```bash
+cd frontend
 python -m http.server 5500
 ```
 
@@ -127,90 +513,59 @@ Open:
 http://localhost:5500
 ```
 
-Demo login:
+---
 
-```text
-Email: operator@rescueroute.local
-Password: rescueroute
-```
+## Limitations
 
-The frontend calls the backend at `http://localhost:8080/api`. CORS is configured for ports `5500` and `127.0.0.1:5500`.
+The current routing system uses a controlled weighted graph rather than a production traffic-routing service.
 
-## Dispatch algorithm
+Therefore:
 
-```text
-1. Lock the incident
-2. Verify it is still PENDING
-3. Find AVAILABLE vehicles
-4. Remove vehicles incompatible with the emergency type
-5. Select the nearest eligible vehicle
-6. Use workload only as a tie-breaker
-7. Lock the selected vehicle
-8. Re-check vehicle availability
-9. Calculate the Dijkstra route
-10. Create the assignment
-11. Mark incident DISPATCHED
-12. Mark vehicle DISPATCHED
-13. Commit the transaction
-```
+* Routes are calculated from the application's configured graph.
+* Travel time does not represent live traffic conditions.
+* Vehicle positions are application-managed rather than GPS-tracked.
+* Live server-push updates are not part of the current implementation.
 
-The locks prevent two concurrent dispatch requests from successfully assigning the same vehicle or the same pending incident.
+These limitations define the current project scope and provide opportunities for future development.
 
-## Vehicle lifecycle
+---
 
-```text
-AVAILABLE → DISPATCHED → EN_ROUTE → ON_SCENE → COMPLETED → AVAILABLE
-```
+## Future Enhancements
 
-`OFFLINE` vehicles are not dispatchable. Invalid state transitions are rejected by the service layer.
+* WebSocket-based live event updates
+* Role-based authentication and authorization
+* Real-world road-network integration
+* Live traffic-aware routing
+* GPS-based vehicle tracking
+* Push notifications
+* Operational analytics
+* Historical dispatch analysis
+* Cloud deployment and monitoring
 
-## REST API
+---
 
-### Incidents
-- `POST /api/incidents`
-- `GET /api/incidents`
-- `GET /api/incidents/{id}`
-- `PUT /api/incidents/{id}/status`
-- `GET /api/incidents/priority-queue`
+## Learning Outcomes
 
-### Vehicles
-- `GET /api/vehicles`
-- `GET /api/vehicles/available`
-- `GET /api/vehicles/{id}`
-- `PUT /api/vehicles/{id}/status`
+This project demonstrates practical implementation of:
 
-### Dispatch
-- `POST /api/dispatch`
-- `GET /api/dispatches`
-- `GET /api/dispatches/{id}`
+* Java object-oriented programming
+* Spring Boot architecture
+* REST API development
+* PostgreSQL database integration
+* JPA/Hibernate
+* Priority queues
+* Graph data structures
+* Dijkstra's shortest-path algorithm
+* State-machine design
+* Transaction management
+* Concurrency handling
+* Unit testing
+* Frontend-backend integration
 
-### Routes
-- `POST /api/routes/calculate`
+---
 
-### Dashboard
-- `GET /api/dashboard/summary`
+## Author
 
-## Testing
+**Shreya S Rai**
 
-The backend contains tests for the core algorithmic behavior, including Dijkstra shortest path and priority ordering. Run:
 
-```bat
-mvn clean test
-```
-
-For the concurrency behavior, test by sending two dispatch requests for the same incident/vehicle at nearly the same time and verify that only one assignment succeeds.
-
-## Interview explanation
-
-> RescueRoute is a Java Spring Boot emergency dispatch and route optimization system. I used a PriorityQueue to order competing emergencies by severity and creation time. For dispatching, I first filter vehicles by availability and emergency compatibility, then choose the nearest feasible vehicle with workload as a tie-breaker. I implemented Dijkstra's algorithm on a weighted graph for shortest-path calculation. The dispatch operation is transactional and uses pessimistic database locking so concurrent requests cannot assign the same vehicle or incident twice.
-
-## Future modules
-
-These are deliberately not fake features in the current build:
-
-- Spring WebSocket/STOMP live push
-- Production authentication and authorization
-- Real GPS tracking
-- Live traffic-aware routing
-- Cloud deployment
-- Advanced analytics
