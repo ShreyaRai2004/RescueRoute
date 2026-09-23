@@ -1,4 +1,4 @@
-const API="https://rescueroute-api.onrender.com";let incidents=[],vehicles=[],dashMap,fullMap,selected=null;
+const API = "https://rescueroute-api.onrender.com/api";let incidents=[],vehicles=[],dashMap,fullMap,selected=null;
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 document.addEventListener("DOMContentLoaded",()=>{bind();if(localStorage.getItem("rr_logged")==="1")showApp()});
 function bind(){
