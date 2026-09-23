@@ -13,7 +13,29 @@ function bind(){
 }
 async function showApp(){$("#login").classList.add("hidden");$("#app").classList.remove("hidden");await load()}
 function page(p){$$(".page").forEach(x=>x.classList.remove("active"));$("#"+p).classList.add("active");$$(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));$("#title").textContent=p==="map"?"Live Map":p[0].toUpperCase()+p.slice(1);$("#sidebar").classList.remove("open");setTimeout(()=>{if(dashMap)dashMap.invalidateSize();if(fullMap)fullMap.invalidateSize()},100)}
-async function api(path,opt={}){const r=await fetch(API+path,{headers:{"Content-Type":"application/json"},...opt});if(!r.ok){let m="Request failed";try{m=(await r.json()).message||m}catch{}throw Error(m)}return r.status===204?null:r.json()}
+
+async function api(path, opt = {}) {
+    const headers = { ...(opt.headers || {}) };
+
+    if (opt.body) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    const r = await fetch(API + path, {
+        ...opt,
+        headers
+    });
+
+    if (!r.ok) {
+        let m = "Request failed";
+        try {
+            m = (await r.json()).message || m;
+        } catch {}
+        throw Error(m);
+    }
+
+    return r.status === 204 ? null : r.json();
+}
 async function load(){try{const [d,i,v]=await Promise.all([api("/dashboard/summary"),api("/incidents"),api("/vehicles")]);incidents=i||[];vehicles=v||[];kpis(d);render();maps();draw()}catch(e){toast("Backend not connected — start Spring Boot first.");console.error(e)}}
 function kpis(d){$$("[data-k]").forEach(e=>{const n=Number(d[e.dataset.k]||0),s=performance.now();function f(t){let p=Math.min(1,(t-s)/600);e.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)}requestAnimationFrame(f)})}
 const rank=s=>({CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3}[s]??4),sc=s=>(s||"LOW").toLowerCase();
