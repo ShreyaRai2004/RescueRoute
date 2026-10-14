@@ -26,7 +26,7 @@
 <div class="side-bottom"><div class="online"><i></i><div><b>System Online</b><small>Dispatch services active</small></div></div><button class="logout" id="logout">↪ Sign out</button></div></aside>
 <main class="main"><header class="topbar"><button class="menu" id="menu">☰</button><div class="crumb">Operations <b>/</b> <strong id="title">Dashboard</strong></div><div class="top-right"><div class="live">● LIVE</div><button class="bell">♢</button><div class="operator"><div class="avatar">DO</div><div><b>Dispatch Operator</b><small>Operations Center</small></div></div></div></header>
 <section class="content">
-<section class="page active" id="dashboard"><div class="head"><div><span class="eyebrow">Emergency Operations Center</span><h1>Good morning, Operator</h1><p>Monitor incidents, coordinate response vehicles, and dispatch assistance efficiently.</p></div><button class="primary" id="newBtn">＋ New Emergency</button></div>
+<section class="page active" id="dashboard"><div class="head"><div><span class="eyebrow">Emergency Operations Center</span><h1 id="greeting">Good morning, Operator</h1><p>Monitor incidents, coordinate response vehicles, and dispatch assistance efficiently.</p></div><button class="primary" id="newBtn">＋ New Emergency</button></div>
 <div class="kpis"><div class="kpi"><div class="ki blue">◉</div><small>ACTIVE EMERGENCIES</small><b data-k="activeEmergencies">—</b><span>Across all zones</span></div><div class="kpi"><div class="ki red">!</div><small>CRITICAL</small><b data-k="criticalEmergencies">—</b><span>Immediate attention</span></div><div class="kpi"><div class="ki amber">◷</div><small>PENDING</small><b data-k="pendingEmergencies">—</b><span>Awaiting dispatch</span></div><div class="kpi"><div class="ki green">✓</div><small>AVAILABLE UNITS</small><b data-k="availableVehicles">—</b><span>Ready to respond</span></div><div class="kpi"><div class="ki purple">↗</div><small>BUSY UNITS</small><b data-k="busyVehicles">—</b><span>Currently assigned</span></div></div>
 <div class="grid2"><div class="panel"><div class="panelhead"><div><h2>Operations Map</h2><p>Incidents and response vehicles</p></div><button class="ghost" data-go="map">Expand ↗</button></div><div id="dashMap" class="map"></div></div><div class="panel"><div class="panelhead"><div><h2>Priority Queue</h2><p>Dispatch order</p></div><span class="live-dot">● Live</span></div><div id="queue" class="queue"></div></div></div>
 <div class="grid2 lower"><div class="panel"><div class="panelhead"><div><h2>Active Incidents</h2><p>Current emergency workload</p></div><button class="text" data-go="incidents">View all →</button></div><div id="active" class="rows"></div></div><div class="panel"><div class="panelhead"><div><h2>Fleet Status</h2><p>Response vehicle availability</p></div><button class="text" data-go="vehicles">Manage →</button></div><div id="fleet" class="rows"></div></div></div></section>
@@ -41,5 +41,21 @@
 
 <div id="dispatchModal" class="backdrop"><div class="modal"><button class="close" data-close="dispatchModal">×</button><span class="eyebrow">Dispatch Authorization</span><h2>Confirm Dispatch</h2><p>The dispatch engine will select an eligible available vehicle.</p><div id="dispatchInfo" class="dispatch"></div><div class="actions"><button class="ghost" data-close="dispatchModal">Cancel</button><button class="primary" id="confirm">Confirm Dispatch</button></div></div></div>
 <div id="toast"></div>
+<script>
+  const hour = new Date().getHours();
+  let greeting;
+
+  if (hour < 12) {
+    greeting = "Good morning, Operator";
+  } else if (hour < 17) {
+    greeting = "Good afternoon, Operator";
+  } else if (hour < 21) {
+    greeting = "Good evening, Operator";
+  } else {
+    greeting = "Good night, Operator";
+  }
+
+  document.getElementById("greeting").textContent = greeting;
+</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script>
 </body></html>
