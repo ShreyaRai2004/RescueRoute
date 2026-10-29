@@ -69,6 +69,52 @@ Vehicle candidate = candidates.stream()
                 route.distanceKm(),route.estimatedTimeMinutes(),String.join(" → ",route.path()),
                 "Dispatch created successfully.");
     }
+    
+    @Transactional
+    public Assignment completeAssignment(Long assignmentId) {
+
+        Assignment assignment = assignmentRepo.findByIdForUpdate(assignmentId)
+                .orElseThrow(() ->
+                        new NotFoundException("Assignment not found: " + assignmentId));
+
+        if (assignment.getStatus() != AssignmentStatus.ACTIVE) {
+            throw new BusinessException(
+                    "This assignment has already been completed or cancelled."
+            );
+        }
+
+        Incident incident = incidentRepo.findByIdForUpdate(assignment.getIncidentId())
+                .orElseThrow(() ->
+                        new NotFoundException("Related incident not found."));
+
+        Vehicle vehicle = vehicleRepo.findByIdForUpdate(assignment.getVehicleId())
+                .orElseThrow(() ->
+                        new NotFoundException("Assigned vehicle not found."));
+
+        if (!java.util.Objects.equals(
+                vehicle.getCurrentIncidentId(), incident.getId())) {
+            throw new BusinessException(
+                    "Vehicle assignment does not match this incident. No changes were made."
+            );
+        }
+
+        // Complete the assignment.
+        assignment.setStatus(AssignmentStatus.COMPLETED);
+        assignment.setCompletedAt(java.time.LocalDateTime.now());
+        assignmentRepo.save(assignment);
+
+        // Close the incident.
+        incident.setStatus(IncidentStatus.COMPLETED);
+        incidentRepo.save(incident);
+
+        // Release the vehicle for future dispatches.
+        vehicle.setCurrentIncidentId(null);
+        vehicle.setStatus(VehicleStatus.AVAILABLE);
+        vehicleRepo.save(vehicle);
+
+        return assignment;
+    }
+
 
     private boolean compatible(VehicleType v, IncidentType i){
         return switch(i){

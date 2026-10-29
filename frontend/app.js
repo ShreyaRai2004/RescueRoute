@@ -1,4 +1,6 @@
-const API = "https://rescueroute-api.onrender.com/api";let incidents=[],vehicles=[],dashMap,fullMap,selected=null;
+const API = "https://rescueroute-api.onrender.com/api";
+let incidents = [], vehicles = [], assignments = [];
+let dashMap, fullMap, selected = null;
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 document.addEventListener("DOMContentLoaded",()=>{bind();if(localStorage.getItem("rr_logged")==="1")showApp()});
 function bind(){
@@ -14,6 +16,7 @@ function bind(){
 async function showApp(){$("#login").classList.add("hidden");$("#app").classList.remove("hidden");await load()}
 function page(p){$$(".page").forEach(x=>x.classList.remove("active"));$("#"+p).classList.add("active");$$(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));$("#title").textContent=p==="map"?"Live Map":p[0].toUpperCase()+p.slice(1);$("#sidebar").classList.remove("open");setTimeout(()=>{if(dashMap)dashMap.invalidateSize();if(fullMap)fullMap.invalidateSize()},100)}
 
+
 async function api(path, opt = {}) {
     const headers = { ...(opt.headers || {}) };
 
@@ -21,22 +24,70 @@ async function api(path, opt = {}) {
         headers["Content-Type"] = "application/json";
     }
 
-    const r = await fetch(API + path, {
-        ...opt,
-        headers
-    });
+    let response;
 
-    if (!r.ok) {
-        let m = "Request failed";
-        try {
-            m = (await r.json()).message || m;
-        } catch {}
-        throw Error(m);
+    try {
+        response = await fetch(API + path, {
+            ...opt,
+            headers
+        });
+    } catch (error) {
+        throw new Error(
+            "Cannot connect to the backend. Check your internet connection or whether the server is running."
+        );
     }
 
-    return r.status === 204 ? null : r.json();
+    if (!response.ok) {
+        let message = `Request failed (${response.status})`;
+
+        try {
+            const data = await response.json();
+            message = data.error || data.message || message;
+        } catch {
+            // Keep the HTTP status message if the response isn't JSON.
+        }
+
+        throw new Error(message);
+    }
+
+    if (response.status === 204) {
+        return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+        return null;
+    }
+
+    return response.json();
 }
-async function load(){try{const [d,i,v]=await Promise.all([api("/dashboard/summary"),api("/incidents"),api("/vehicles")]);incidents=i||[];vehicles=v||[];kpis(d);render();maps();draw()}catch(e){toast("Backend not connected — start Spring Boot first.");console.error(e)}}
+
+
+async function load() {
+    try {
+        const [d, i, v, a] = await Promise.all([
+            api("/dashboard/summary"),
+            api("/incidents"),
+            api("/vehicles"),
+            api("/dispatches")
+        ]);
+
+        incidents = i || [];
+        vehicles = v || [];
+        assignments = a || [];
+
+        kpis(d);
+        render();
+        maps();
+        draw();
+        renderAssignments();
+    } catch (e) {
+        toast(e.message || "Could not load data from the backend.");
+        console.error(e);
+    }
+}
+
 function kpis(d){$$("[data-k]").forEach(e=>{const n=Number(d[e.dataset.k]||0),s=performance.now();function f(t){let p=Math.min(1,(t-s)/600);e.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)}requestAnimationFrame(f)})}
 const rank=s=>({CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3}[s]??4),sc=s=>(s||"LOW").toLowerCase();
 function render(){const sorted=[...incidents].filter(x=>x.status!=="COMPLETED").sort((a,b)=>rank(a.severity)-rank(b.severity)||new Date(a.createdAt||0)-new Date(b.createdAt||0));$("#queue").innerHTML=sorted.slice(0,7).map((x,i)=>`<div class="qrow"><i class="dot ${sc(x.severity)}"></i><div><b>#${x.id} · ${x.type}</b><small>${x.status} · ${x.description||"Emergency reported"}</small></div><span class="push">${String(i+1).padStart(2,"0")}</span></div>`).join("")||empty("No pending emergencies");
@@ -44,6 +95,84 @@ $("#active").innerHTML=incidents.filter(x=>x.status!=="COMPLETED"&&x.status!=="C
 $("#fleet").innerHTML=vehicles.slice(0,6).map(v=>`<div class="row"><div class="vicon" style="width:34px;height:34px;font-size:14px">▣</div><div><b>${v.vehicleNumber||v.vehicle_number}</b><small>${v.type}</small></div><span class="status ${v.status==="AVAILABLE"?"":v.status==="OFFLINE"?"offline":"busy"}">${v.status}</span></div>`).join("")||empty("No vehicles");
 renderTable();$("#vehicleGrid").innerHTML=vehicles.map(v=>`<article class="vehicle"><div class="vtop"><div class="vicon">▣</div><span class="status ${v.status==="AVAILABLE"?"":v.status==="OFFLINE"?"offline":"busy"}">${v.status}</span></div><h3>${v.vehicleNumber||v.vehicle_number}</h3><p>${v.type}</p><div class="vmeta"><div class="meta"><span>Workload</span><b>${v.workload||0} assignments</b></div><div class="meta"><span>Location</span><b>${Number(v.latitude).toFixed(3)}, ${Number(v.longitude).toFixed(3)}</b></div></div></article>`).join("")}
 function renderTable(){const q=($("#search")?.value||"").toLowerCase(),s=$("#sev")?.value||"",st=$("#stat")?.value||"";const a=incidents.filter(x=>(!q||JSON.stringify(x).toLowerCase().includes(q))&&(!s||x.severity===s)&&(!st||x.status===st));$("#table").innerHTML=a.map(x=>`<tr><td>#${x.id}</td><td>${x.type}</td><td><span class="badge ${sc(x.severity)}">${x.severity}</span></td><td><span class="status">${x.status}</span></td><td>${Number(x.latitude).toFixed(3)}, ${Number(x.longitude).toFixed(3)}</td><td>${date(x.createdAt)}</td><td>${x.status==="PENDING"?`<button class="primary" style="padding:7px 9px" onclick="openDispatch(${x.id})">Dispatch</button>`:"—"}</td></tr>`).join("")||`<tr><td colspan="7" style="text-align:center;padding:30px">No matching incidents.</td></tr>`}
+
+function renderAssignments() {
+    const table = $("#assignmentTable");
+    if (!table) return;
+
+    if (!assignments.length) {
+        table.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center;padding:30px">
+                    No assignments found.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    table.innerHTML = assignments.map(a => {
+        const incident = incidents.find(
+            x => Number(x.id) === Number(a.incidentId)
+        );
+
+        const vehicle = vehicles.find(
+            x => Number(x.id) === Number(a.vehicleId)
+        );
+
+        const active = a.status === "ACTIVE";
+
+        return `
+            <tr>
+                <td>#${a.id}</td>
+                <td>
+                    ${incident
+                        ? `#${incident.id} · ${incident.type}`
+                        : `#${a.incidentId}`}
+                </td>
+                <td>
+                    ${vehicle
+                        ? (vehicle.vehicleNumber || vehicle.vehicle_number)
+                        : `#${a.vehicleId}`}
+                </td>
+                <td>${a.distance ?? "—"} km</td>
+                <td>${a.estimatedTimeMinutes ?? "—"} min</td>
+                <td>
+                    <span class="status ${active ? "busy" : ""}">
+                        ${a.status || "UNKNOWN"}
+                    </span>
+                </td>
+                <td>${date(a.assignedAt)}</td>
+                <td>
+                    ${active
+                        ? `<button class="primary"
+                             style="padding:7px 9px"
+                             onclick="completeAssignment(${a.id})">
+                             Complete
+                           </button>`
+                        : "—"}
+                </td>
+            </tr>`;
+    }).join("");
+}
+
+async function completeAssignment(id) {
+    if (!confirm(`Mark assignment #${id} as completed? The incident will be closed and its vehicle released.`)) {
+        return;
+    }
+
+    try {
+        await api(`/dispatches/${id}/complete`, {
+            method: "PUT"
+        });
+
+        toast(`Assignment #${id} completed. Vehicle released.`);
+        await load();
+    } catch (e) {
+        toast(e.message || "Could not complete the assignment.");
+        console.error(e);
+    }
+}
+
 function date(x){if(!x)return"—";return new Date(x).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}
 function empty(x){return`<div style="padding:25px;text-align:center;color:#9aa6b5;font-size:10px">${x}</div>`}
 function open(id){$("#"+id).classList.add("show")}function close(id){$("#"+id).classList.remove("show")}

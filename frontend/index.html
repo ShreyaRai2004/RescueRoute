@@ -22,7 +22,29 @@
 
 <div id="app" class="hidden">
 <aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">✦</div><div><b>RescueRoute</b><small>Emergency Operations</small></div></div>
-<nav><button class="nav active" data-page="dashboard">⌂ <span>Dashboard</span></button><button class="nav" data-page="incidents">◉ <span>Incidents</span></button><button class="nav" data-page="vehicles">▣ <span>Vehicles</span></button><button class="nav" data-page="map">⌖ <span>Live Map</span></button></nav>
+
+<nav>
+  <button class="nav active" data-page="dashboard">
+    ⌂ <span>Dashboard</span>
+  </button>
+
+  <button class="nav" data-page="incidents">
+    ◉ <span>Incidents</span>
+  </button>
+
+  <button class="nav" data-page="assignments">
+    ✓ <span>Assignments</span>
+  </button>
+
+  <button class="nav" data-page="vehicles">
+    ▣ <span>Vehicles</span>
+  </button>
+
+  <button class="nav" data-page="map">
+    ⌖ <span>Live Map</span>
+  </button>
+</nav>
+
 <div class="side-bottom"><div class="online"><i></i><div><b>System Online</b><small>Dispatch services active</small></div></div><button class="logout" id="logout">↪ Sign out</button></div></aside>
 <main class="main"><header class="topbar"><button class="menu" id="menu">☰</button><div class="crumb">Operations <b>/</b> <strong id="title">Dashboard</strong></div><div class="top-right"><div class="live">● LIVE</div><button class="bell">♢</button><div class="operator"><div class="avatar">DO</div><div><b>Dispatch Operator</b><small>Operations Center</small></div></div></div></header>
 <section class="content">
@@ -34,6 +56,42 @@
 <section class="page" id="incidents"><div class="head"><div><span class="eyebrow">Incident Management</span><h1>Emergency Incidents</h1><p>Review, prioritize, and dispatch response teams.</p></div><button class="primary" id="newBtn2">＋ New Emergency</button></div><div class="toolbar panel"><div class="search">⌕ <input id="search" placeholder="Search incidents..."></div><select id="sev"><option value="">All severity</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select><select id="stat"><option value="">All status</option><option>PENDING</option><option>DISPATCHED</option><option>COMPLETED</option></select></div><div class="panel table"><table><thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Location</th><th>Created</th><th>Action</th></tr></thead><tbody id="table"></tbody></table></div></section>
 
 <section class="page" id="vehicles"><div class="head"><div><span class="eyebrow">Fleet Management</span><h1>Response Vehicles</h1><p>Monitor availability and operational state.</p></div></div><div id="vehicleGrid" class="vehicle-grid"></div></section>
+
+<section class="page" id="assignments">
+  <div class="head">
+    <div>
+      <span class="eyebrow">Dispatch Management</span>
+      <h1>Assignments</h1>
+      <p>Track dispatched vehicles and complete emergency assignments.</p>
+    </div>
+    <button class="ghost" onclick="load()">↻ Refresh</button>
+  </div>
+
+  <div class="panel table">
+    <table>
+      <thead>
+        <tr>
+          <th>Assignment</th>
+          <th>Incident</th>
+          <th>Vehicle</th>
+          <th>Distance</th>
+          <th>Estimated Time</th>
+          <th>Status</th>
+          <th>Assigned At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="assignmentTable">
+        <tr>
+          <td colspan="8" style="text-align:center;padding:30px">
+            Loading assignments...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="page" id="map"><div class="head"><div><span class="eyebrow">Geospatial Operations</span><h1>Live Operations Map</h1><p>Incident locations, response units, and dispatch routes.</p></div></div><div class="panel"><div id="fullMap" class="fullmap"></div></div></section>
 </section></main></div>
 
